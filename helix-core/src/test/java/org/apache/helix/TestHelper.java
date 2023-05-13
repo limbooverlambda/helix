@@ -73,11 +73,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
 
+import static org.awaitility.Awaitility.*;
 
 public class TestHelper {
   private static final Logger LOG = LoggerFactory.getLogger(TestHelper.class);
   public static final long WAIT_DURATION = 60 * 1000L; // 60 seconds
   public static final int DEFAULT_REBALANCE_PROCESSING_WAIT_TIME = 1500;
+
   /**
    * Returns a unused random port.
    */
@@ -803,19 +805,9 @@ public class TestHelper {
   }
 
   public static boolean verify(Verifier verifier, long timeout) throws Exception {
-    long start = System.currentTimeMillis();
-    do {
-      boolean result = verifier.verify();
-      boolean isTimedout = (System.currentTimeMillis() - start) > timeout;
-      if (result || isTimedout) {
-        if (isTimedout && !result) {
-          LOG.error("verifier time out, consider try longer timeout, stack trace{}",
-              Arrays.asList(Thread.currentThread().getStackTrace()));
-        }
-        return result;
-      }
-      Thread.sleep(50);
-    } while (true);
+    with().pollInterval(50, TimeUnit.MILLISECONDS).atMost(timeout, TimeUnit.MILLISECONDS).await()
+        .until(verifier::verify);
+    return verifier.verify();
   }
 
   // debug code
