@@ -180,81 +180,88 @@ public class TestHelixViewAggregator extends ViewAggregatorIntegrationTestBase {
   }
 
   private void modifyViewClusterConfig() throws Exception {
-    // Modify view cluster config
-    _viewClusterRefreshPeriodSec = 8;
-    List<PropertyType> newProperties =
-        new ArrayList<>(ViewClusterSourceConfig.getValidPropertyTypes());
-    newProperties.remove(PropertyType.LIVEINSTANCES);
-    resetViewClusterConfig(_viewClusterRefreshPeriodSec, newProperties);
+    try {
+      // Modify view cluster config
+      _viewClusterRefreshPeriodSec = 8;
+      List<PropertyType> newProperties = new ArrayList<>(ViewClusterSourceConfig.getValidPropertyTypes());
+      newProperties.remove(PropertyType.LIVEINSTANCES);
+      resetViewClusterConfig(_viewClusterRefreshPeriodSec, newProperties);
 
-    // Wait for refresh and verify
-    Predicate<MockViewClusterSpectator> checkForLiveInstanceChanges =
-        hasExternalViewChanges().negate().and(hasInstanceConfigChanges().negate())
-            .and(hasLiveInstanceChanges());
-    int timeout = (_viewClusterRefreshPeriodSec + 5) * 1000;
-    TestHelper.verify(() -> checkForLiveInstanceChanges.test(_monitor), timeout);
-    Assert.assertEquals(_monitor.getPropertyNamesFromViewCluster(PropertyType.LIVEINSTANCES).size(),
-        0);
-    _monitor.reset();
+      // Wait for refresh and verify
+      Predicate<MockViewClusterSpectator> checkForLiveInstanceChanges =
+          hasExternalViewChanges().negate().and(hasInstanceConfigChanges().negate()).and(hasLiveInstanceChanges());
+      int timeout = (_viewClusterRefreshPeriodSec + 5) * 1000;
+      TestHelper.verify(() -> checkForLiveInstanceChanges.test(_monitor), timeout);
+      Assert.assertEquals(_monitor.getPropertyNamesFromViewCluster(PropertyType.LIVEINSTANCES).size(),
+          0);
+    } finally {
+      _monitor.reset();
+    }
   }
 
   private void removeResourceFromCluster() throws Exception {
-    // Remove 1 resource from a cluster, we should get corresponding changes in view cluster
-    List<String> resourceNameList = new ArrayList<>(_allResources);
-    _gSetupTool.dropResourceFromCluster(_allSourceClusters.get(0), resourceNameList.get(0));
-    rebalanceResources();
-    Predicate<MockViewClusterSpectator> checkForExternalViewChanges =
-        hasExternalViewChanges().and(hasInstanceConfigChanges().negate())
-            .and(hasLiveInstanceChanges().negate());
-    // Wait for refresh and verify
-    int timeout = (_viewClusterRefreshPeriodSec + 5) * 1000;
-    TestHelper.verify(() -> checkForExternalViewChanges.test(_monitor), timeout);
-    Assert.assertEquals(
-        new HashSet<>(_monitor.getPropertyNamesFromViewCluster(PropertyType.EXTERNALVIEW)),
-        _allResources);
-    _monitor.reset();
+    try {
+      // Remove 1 resource from a cluster, we should get corresponding changes in view cluster
+      List<String> resourceNameList = new ArrayList<>(_allResources);
+      _gSetupTool.dropResourceFromCluster(_allSourceClusters.get(0), resourceNameList.get(0));
+      rebalanceResources();
+      Predicate<MockViewClusterSpectator> checkForExternalViewChanges =
+          hasExternalViewChanges().and(hasInstanceConfigChanges().negate()).and(hasLiveInstanceChanges().negate());
+      // Wait for refresh and verify
+      int timeout = (_viewClusterRefreshPeriodSec + 5) * 1000;
+      TestHelper.verify(() -> checkForExternalViewChanges.test(_monitor), timeout);
+      Assert.assertEquals(new HashSet<>(_monitor.getPropertyNamesFromViewCluster(PropertyType.EXTERNALVIEW)),
+          _allResources);
+    } finally {
+      _monitor.reset();
+    }
   }
 
   private void createResourceAndTriggerRebalance() throws Exception {
-    // Create resource and trigger rebalance
-    createResources();
-    rebalanceResources();
-    // Wait for refresh and verify
-    Predicate<MockViewClusterSpectator> checkForExternalViewChanges =
-        hasExternalViewChanges().and(hasInstanceConfigChanges().negate())
-            .and(hasLiveInstanceChanges().negate());
-    int timeout = (_viewClusterRefreshPeriodSec + 5) * 1000;
-    TestHelper.verify(() -> checkForExternalViewChanges.test(_monitor), timeout);
-    Assert.assertEquals(
-        new HashSet<>(_monitor.getPropertyNamesFromViewCluster(PropertyType.EXTERNALVIEW)),
-        _allResources);
-    _monitor.reset();
+    try {
+      // Create resource and trigger rebalance
+      createResources();
+      rebalanceResources();
+      // Wait for refresh and verify
+      Predicate<MockViewClusterSpectator> checkForExternalViewChanges =
+          hasExternalViewChanges().and(hasInstanceConfigChanges().negate())
+              .and(hasLiveInstanceChanges().negate());
+      int timeout = (_viewClusterRefreshPeriodSec + 5) * 1000;
+      TestHelper.verify(() -> checkForExternalViewChanges.test(_monitor), timeout);
+      Assert.assertEquals(
+          new HashSet<>(_monitor.getPropertyNamesFromViewCluster(PropertyType.EXTERNALVIEW)),
+          _allResources);
+    } finally {
+      _monitor.reset();
+    }
   }
 
   private void initiateViewAggregator() throws Exception {
-    // Clean up initial events
-    _monitor.reset();
+    try {
+      // Clean up initial events
+      _monitor.reset();
 
-    // Start view aggregator
-    triggerViewAggregatorStateTransition("STANDBY", "LEADER");
+      // Start view aggregator
+      triggerViewAggregatorStateTransition("STANDBY", "LEADER");
 
-    // Wait for refresh and verify
-    Predicate<MockViewClusterSpectator> checkForNoExternalViewChanges =
-        hasExternalViewChanges().negate().and(hasInstanceConfigChanges())
-            .and(hasLiveInstanceChanges());
-    int timeout = (_viewClusterRefreshPeriodSec + 5) * 1000;
-    TestHelper.verify(() -> checkForNoExternalViewChanges.test(_monitor), timeout);
+      // Wait for refresh and verify
+      Predicate<MockViewClusterSpectator> checkForNoExternalViewChanges =
+          hasExternalViewChanges().negate().and(hasInstanceConfigChanges())
+              .and(hasLiveInstanceChanges());
+      int timeout = (_viewClusterRefreshPeriodSec + 5) * 1000;
+      TestHelper.verify(() -> checkForNoExternalViewChanges.test(_monitor), timeout);
 
-    Set<String> participantInstanceNames = getParticipantInstanceNames();
+      Set<String> participantInstanceNames = getParticipantInstanceNames();
 
-    Assert.assertEquals(
-        new HashSet<>(_monitor.getPropertyNamesFromViewCluster(PropertyType.LIVEINSTANCES)),
-        participantInstanceNames);
-    Assert.assertEquals(
-        new HashSet<>(_monitor.getPropertyNamesFromViewCluster(PropertyType.INSTANCES)),
-        participantInstanceNames);
-
-    _monitor.reset();
+      Assert.assertEquals(
+          new HashSet<>(_monitor.getPropertyNamesFromViewCluster(PropertyType.LIVEINSTANCES)),
+          participantInstanceNames);
+      Assert.assertEquals(
+          new HashSet<>(_monitor.getPropertyNamesFromViewCluster(PropertyType.INSTANCES)),
+          participantInstanceNames);
+    } finally {
+      _monitor.reset();
+    }
   }
 
   private Set<String> getParticipantInstanceNames() {
