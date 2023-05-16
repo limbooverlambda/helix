@@ -23,6 +23,7 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.net.ServerSocket;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -805,7 +806,12 @@ public class TestHelper {
 
   public static boolean verify(Verifier verifier, long timeout) throws Exception {
     try {
-      with().pollInterval(50, TimeUnit.MILLISECONDS).atMost(timeout, TimeUnit.MILLISECONDS).await()
+      //If no timeout is being passed, skip the poll
+      if(timeout == 0) {
+        return verifier.verify();
+      }
+      //Start the first poll instantly and then do it in increments of 50 milliseconds.
+      with().pollDelay(Duration.ZERO).pollInterval(50, TimeUnit.MILLISECONDS).atMost(timeout, TimeUnit.MILLISECONDS).await()
           .until(verifier::verify);
       return verifier.verify();
     } catch (ConditionTimeoutException ex) {
