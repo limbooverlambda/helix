@@ -38,6 +38,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.helix.PropertyKey.Builder;
@@ -810,10 +811,17 @@ public class TestHelper {
       if(timeout == 0) {
         return verifier.verify();
       }
+      AtomicBoolean result = new AtomicBoolean(false);
       //Start the first poll instantly and then do it in increments of 50 milliseconds.
-      with().pollDelay(Duration.ZERO).pollInterval(50, TimeUnit.MILLISECONDS).atMost(timeout, TimeUnit.MILLISECONDS).await()
-          .until(verifier::verify);
-      return verifier.verify();
+      with().pollDelay(Duration.ZERO).pollInterval(50, TimeUnit.MILLISECONDS)
+          .atMost(timeout, TimeUnit.MILLISECONDS)
+          .await()
+          .until(() -> {
+            boolean r = verifier.verify();
+            result.set(r);
+            return r;
+          });
+      return result.get();
     } catch (ConditionTimeoutException ex) {
       LOG.error("verifier time out, consider try longer timeout, stack trace{}",
           Arrays.asList(Thread.currentThread().getStackTrace()));
